@@ -1,0 +1,11 @@
+
+========== Ideas for future development ===============
+
+* for AffyBatch, the spatial plots could show the affyPLM residuals instead 
+  of the intensities themselves. However, currently, I don't seem to be able to access
+  the image method from affyPLM, and it looks messy. 
+
+* duplicate correlation: If featureData contains a factor that
+  identifies features containing the same reporter sequence, we can
+  check for that (scatterplots, standard deviation)
+
