@@ -1,0 +1,169 @@
+%\VignetteIndexEntry{Advanced topics: Customizing arrayQualityMetrics reports and programmatic processing of the output}
+%\VignetteDepends{CCl4,vsn}
+%\VignettePackage{arrayQualityMetrics}
+%\VignetteEngine{knitr::knitr}
+
+\documentclass[11pt]{article}
+
+<<style, eval=TRUE, echo=FALSE, results="asis">>=
+knitr::opts_chunk$set(message=FALSE, warning=FALSE, error=FALSE, tidy=FALSE) # turn off verbosity
+BiocStyle:::latex2()
+@
+
+\begin{document}
+
+\bioctitle[Advanced topics]%
+    {Advanced topics: Customizing arrayQualityMetrics reports and programmatic processing of the output}
+\author{Audrey Kauffmann, Wolfgang Huber}
+\maketitle
+\tableofcontents
+
+<<dummy1, include=FALSE>>=
+##options(error=recover)
+options(bitmapType = "cairo")
+.HaveDummy = !interactive()
+  if(.HaveDummy) pdf("dummy.pdf")
+@ 
+
+%--------------------------------------------------
+\section{Introduction}
+%--------------------------------------------------
+If you are new to this package, then please consult the vignette
+\emph{Introduction: microarray quality assessment with arrayQualityMetrics}.
+
+This vignette addresses advanced topics. It explains how to customize
+the report by selecting specific modules and sections, or by adding
+your own ones. Furthermore, we will see how to (programmatically)
+postprocess the results of the outlier detection, or how to adapt the
+detection criteria to your needs.
+
+\emph{Terminology:} In the documentation of this package, we
+refer to a \emph{module} as a self-contained element of a report that
+investigates one particular quality metric. A module consists of a
+figure and an explanatory text. It may also contain a data structure
+(an object of class \Rclass{outlierDetection}) that
+marks a subset of the arrays in the dataset as outliers
+according to the particular metric investigated in the module.  We
+refer to a \emph{section} as a collection of one or more modules that
+are thematically related.
+
+For the following examples, let us load the needed packages and some data.
+
+<<loading, results="hide">>=
+library("arrayQualityMetrics")
+library("ALLMLL")
+data("MLL.A")
+@
+
+
+%--------------------------------------------------
+\section{Data preparation}
+%--------------------------------------------------
+Some of the computations that are needed for the modules are common
+between several modules, and thus we perform them once,
+beforehand. These functions are called \Rfunction{prepdata} and
+\Rfunction{prepaffy}, and we refer to their manual page for 
+details. For example,
+
+<<DataPreparation>>=
+preparedData = prepdata(expressionset = MLL.A, 
+                        intgroup = c(), 
+                        do.logtransform = TRUE)
+@ 
+
+The arguments \Robject{intgroup} and \Robject{do.logtransform} are the
+same as for \Rfunction{arrayQualityMetrics}, but in
+\Rfunction{prepdata} they have no defaults, so we need to set them
+explicitely.
+
+%--------------------------------------------------
+\section{Module generating functions}
+%--------------------------------------------------
+The package contains a variety of functions that compute modules, and they are
+listed on a manual page which you can access by typing:
+
+<<boxplot, eval=FALSE>>=
+?aqm.boxplot
+@ 
+
+Here, let us create a report with only two quality metrics modules: 
+boxplots and density plots.
+
+<<metrics>>=
+bo = aqm.boxplot(preparedData)
+de = aqm.density(preparedData)
+qm = list("Boxplot" = bo, "Density" = de)
+@ 
+
+The objects \Robject{bo} and \Robject{de} are of class
+\Rclass{aqmReportModule}; please consult the class' manual page for
+more information.
+
+If you want to create your own modules, please have a look at the code
+for the various existing functions for this purpose, and adapt it.
+The function \Rfunction{aqm.pca} is a good place to start.
+
+%--------------------------------------------------
+\section{Outlier detection}
+%--------------------------------------------------
+Some of the modules perform outlier detection. For instance, in the
+default report produced by \Rfunction{arrayQualityMetrics}, the
+module headed \emph{Boxplots} is followed by one headed \emph{Outlier
+  detection for Boxplots}. In the corresponding
+\Rclass{aqmReportModule} object, this is reflected by a non-trivial
+value for the slot named \Robject{outliers}:
+%
+<<booutliers>>=
+bo@outliers
+@ 
+%
+The slot named \Robject{statistic} contains, for each array, a
+single number based on which outlier detection is performed.  For
+instance, in the case of \Robject{bo}, the slot
+\Robject{bo@outliers@statistic} is the Kolmogorov-Smirnov statistic
+for the comparison between each array's intensity distribution and the
+distribution of the pooled data. The slot \Robject{threshold} contains
+the threshold against which the valuess of \Robject{statistic} were
+compared. Arrays with a value of \Robject{statistic} greather than
+\Robject{threshold} are called outliers. Their indices are listed in
+the vector \Robject{which}.  Finally, the slot \Robject{description}
+contains a textual description of the definition of
+\Robject{statistic} and indicates how the \Robject{threshold} was chosen.
+
+The actual details of outlier detection are different for each report
+module, and are documented in the figure caption of the report
+module. For more information, please look at the code of
+the report module generating function of interest -- for instance, at the first few
+lines of the \Rfunction{boxplot} function. The code there uses the helper
+functions \Rfunction{outliers} and \Rfunction{boxplotOutliers}, which
+are documented in their manual pages.
+
+%--------------------------------------------------
+\section{Rendering the report}
+%--------------------------------------------------
+A report is rendered by calling the function
+\Rfunction{aqm.writereport} with a list of \Rclass{aqmReportModule}
+objects.
+
+<<shortReport>>=
+outdir = tempdir()
+aqm.writereport(modules = qm, reporttitle = "My example", outdir = outdir, 
+                arrayTable = pData(MLL.A))
+outdir
+@ 
+
+Point your browser to the \texttt{index.html} file in that directory.
+
+%--------------------------------------------------
+\subsection*{Session Info}
+%--------------------------------------------------
+<<dummy2, include=FALSE>>=
+if(.HaveDummy) dev.off()
+@ 
+
+
+<<pkgs, echo=FALSE, results="asis">>=
+toLatex(sessionInfo())
+@
+
+\end{document}
